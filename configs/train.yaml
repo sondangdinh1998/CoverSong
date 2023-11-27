@@ -1,0 +1,105 @@
+task:
+  _target_: lightcover.tasks.identification.CoverSongIdentificationTask
+
+  dataset:
+    train_ds:
+      _target_: lightcover.datas.dataset.CoverSongIdentificationDataset
+      filepaths: dataset/SHS100K-trainset.json
+
+      augmentation:
+        audio_augment:
+          trim_sample:
+            _target_: lightcover.datas.augment.TrimAudioSample
+            factor: 0.7
+            min_length: 30.0
+            max_length: 300.0
+            probability: 1.0
+
+          # rir_noise:
+          #   _target_: lightcover.datas.augment.ApplyImpulseResponse
+          #   rir_filepath_16k: /home/cybervoice/data/noise/impulse_response/metadata.json
+          #   second_before_peak: 0.01
+          #   second_after_peak: 0.5
+          #   probability: 0.2
+
+          # background_noise:
+          #   _target_: lightcover.datas.augment.AddBackgroundNoise
+          #   noise_filepath_16k: /home/cybervoice/data/noise/background_noise/metadata.json
+          #   min_snr_db: 0.0
+          #   max_snr_db: 30.0
+          #   probability: 0.2
+
+        # feature_augment:
+        #   freq_masking:
+        #     _target_: lightcover.datas.augment.FrequencyMasking
+        #     freq_masks: 1
+        #     freq_width: 27
+
+        #   time_masking:
+        #     _target_: lightcover.datas.augment.TimeMasking
+        #     time_masks: 10
+        #     time_width: 0.05
+
+    val_ds:
+      _target_: lightcover.datas.dataset.CoverSongIdentificationDataset
+      filepaths: dataset/SHS100K-valset.json
+
+    loaders:
+      batch_size: 32
+      num_workers: 4
+      pin_memory: True
+
+  model:
+    d_model: &d_model 512
+    num_classes: &num_classes 10000
+    embedding_dim: &embedding_dim 256
+
+    network:
+      _target_: lightcover.modules.conformer.Conformer
+      input_dim: 84
+      d_model: *d_model
+      subsampling_factor: 4
+      subsampling_filters: 256
+      subsampling_kernel: 3
+      encoder_num_heads: 8
+      encoder_ffn_dim: 2048
+      encoder_num_layers: 6
+      encoder_kernel_size: 9
+      pooling_att_dim: 128
+      pooling_emb_dim: *embedding_dim
+      dropout: 0.1
+
+    criterion:
+      _target_: lightcover.modules.criterion.ArcMarginLoss
+      input_dim: *embedding_dim
+      output_dim: *num_classes
+      scale: 32.0
+      margin: 0.2
+
+    optimizer:
+      lr: 1.0
+      betas: [0.9, 0.999]
+      weight_decay: 1e-2
+      eps: 1e-9
+
+    scheduler:
+      model_size: *d_model
+      warmup_steps: 10000
+
+callbacks:
+  lr:
+    _target_: pytorch_lightning.callbacks.LearningRateMonitor
+
+  cb:
+    _target_: pytorch_lightning.callbacks.ModelCheckpoint
+    monitor: val_loss
+    save_last: True
+    save_top_k: 10
+    filename: "{epoch}-{val_loss:.5f}"
+    every_n_epochs: 1
+
+trainer:
+  max_epochs: 30
+  strategy: ddp_find_unused_parameters_false
+  accelerator: gpu
+  devices: [0, 1]
