@@ -1,3 +1,5 @@
+import os
+import random
 from typing import Tuple, List, Union, Any, Optional
 
 from omegaconf import DictConfig
@@ -23,7 +25,7 @@ def collate_csi_data(batch: List[Any]) -> Tuple[torch.Tensor, ...]:
     return features, lengths, targets
 
 
-class CoverSongIdentificationDataset(Dataset):
+class AudioDataset(Dataset):
     def __init__(
         self,
         filepaths: Union[str, List[str]],
@@ -46,6 +48,40 @@ class CoverSongIdentificationDataset(Dataset):
             signal = augment.apply(signal, sr)
 
         spectrum = extract_cqt_spectrum(signal, sr)
+        for augment in self.feature_augment:
+            spectrum = augment.apply(spectrum)
+
+        return spectrum.T, label
+
+    def __len__(self) -> int:
+        return len(self.dataset)
+
+
+class TensorDataset(Dataset):
+    def __init__(
+        self,
+        filepaths: Union[str, List[str]],
+        augmentation: Optional[DictConfig] = None,
+    ) -> None:
+        super().__init__()
+        self.dataset = build_dataset(filepaths)
+        self.audio_augment, self.feature_augment = [], []
+        if augmentation is not None:
+            augments = build_augmentation(augmentation)
+            self.audio_augment, self.feature_augment = augments
+
+    def __getitem__(self, index: int) -> Tuple[torch.Tensor, int]:
+        data = self.dataset[index]
+        filepath = data["filepath"]
+        label = int(data["id"])
+
+        dirname = os.path.dirname(filepath).replace("/wav", "/cqt")
+        filename = os.path.basename(filepath).replace(".wav", ".pt")
+
+        speed = random.choice([0.8, 0.9, 1.0, 1.1, 1.2])
+        filepath = os.path.join(dirname, f"{speed}___{filename}")
+
+        spectrum = torch.load(filepath, map_location="cpu")
         for augment in self.feature_augment:
             spectrum = augment.apply(spectrum)
 
