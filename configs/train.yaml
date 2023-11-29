@@ -35,19 +35,19 @@ task:
           #   max_snr_db: 30.0
           #   probability: 0.2
 
-        feature_augment:
-          freq_masking:
-            _target_: lightcover.datas.augment.FrequencyMasking
-            freq_masks: 1
-            freq_width: 27
+        # feature_augment:
+        #   freq_masking:
+        #     _target_: lightcover.datas.augment.FrequencyMasking
+        #     freq_masks: 1
+        #     freq_width: 27
 
-          time_masking:
-            _target_: lightcover.datas.augment.TimeMasking
-            time_masks: 10
-            time_width: 0.05
+        #   time_masking:
+        #     _target_: lightcover.datas.augment.TimeMasking
+        #     time_masks: 10
+        #     time_width: 0.05
 
     val_ds:
-      _target_: lightcover.datas.dataset.CoverSongIdentificationDataset
+      _target_: lightcover.datas.dataset.TensorDataset
       filepaths: dataset/SHS100K-valset.json
 
     loaders:
