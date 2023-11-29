@@ -59,3 +59,31 @@ class TrimAudioSample(object):
         sample = speech[:, start_index: start_index + length]
 
         return sample
+
+
+class TimeMasking(object):
+    def __init__(self, time_masks: int, time_width: float):
+        self.time_masks = time_masks
+        self.time_width = time_width
+        self.augment = T.TimeMasking(1)
+
+    def apply(self, feature: torch.Tensor) -> torch.Tensor:
+        feature = feature.unsqueeze(0)
+        time_width = int(self.time_width * feature.size(-1))
+        self.augment.mask_param = max(time_width, 1)
+        for __ in range(self.time_masks):
+            feature = self.augment(feature)
+        return feature.squeeze(0)
+
+
+class FrequencyMasking(object):
+    def __init__(self, freq_masks: int, freq_width: int):
+        self.freq_masks = freq_masks
+        self.freq_width = freq_width
+        self.augment = T.FrequencyMasking(freq_width)
+
+    def apply(self, feature: torch.Tensor) -> torch.Tensor:
+        feature = feature.unsqueeze(0)
+        for __ in range(self.freq_masks):
+            feature = self.augment(feature)
+        return feature.squeeze(0)
