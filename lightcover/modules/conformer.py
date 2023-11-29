@@ -37,6 +37,7 @@ class ConvolutionSubsampling(nn.Module):
                         stride=self.stride,
                         padding=padding,
                     ),
+                    nn.BatchNorm2d(num_filters),
                     nn.SiLU(),
                 )
             )
