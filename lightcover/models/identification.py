@@ -17,7 +17,7 @@ class LightningCSI:
         checkpoint = torch.load(filepath, map_location="cpu")
         hparams = checkpoint["hyper_parameters"]
         weights = checkpoint["state_dict"]
-        network = load_module(hparams["network"], weights["encoder"], device)
+        network = load_module(hparams["network"], weights["network"], device)
         return network
 
     @torch.inference_mode()
