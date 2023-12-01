@@ -73,7 +73,7 @@ class TensorDataset(Dataset):
     def __getitem__(self, index: int) -> Tuple[torch.Tensor, int]:
         data = self.dataset[index]
         filepath = data["filepath"]
-        label = int(data["id"])
+        label = data["id"]
 
         dirname = os.path.dirname(filepath).replace("/wav", "/cqt")
         filename = os.path.basename(filepath).replace(".wav", ".pt")
