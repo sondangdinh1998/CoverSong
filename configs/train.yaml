@@ -71,7 +71,7 @@ task:
       encoder_ffn_dim: 2048
       encoder_num_layers: 6
       encoder_kernel_size: 9
-      pooling_att_dim: 128
+      pooling_n_heads: 8
       pooling_emb_dim: *embedding_dim
       dropout: 0.1
 

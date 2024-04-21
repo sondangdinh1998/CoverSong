@@ -120,6 +120,44 @@ class AttentiveStatisticsPooling(nn.Module):
         return outs
 
 
+class AttentiveTransformerPooling(nn.Module):
+    def __init__(
+        self,
+        d_model: int,
+        n_heads: int,
+        emb_dim: int,
+        dropout: float,
+    ):
+        super().__init__()
+
+        self.cls_token = nn.Parameter(torch.empty(1, 1, d_model))
+        nn.init.normal_(self.cls_token)
+
+        self.attention = nn.TransformerEncoderLayer(
+            d_model, n_heads, 4 * d_model, dropout, batch_first=True
+        )
+
+        self.projector = nn.Sequential(
+            nn.Linear(d_model, d_model),
+            nn.SiLU(),
+            nn.Dropout(dropout),
+            nn.Linear(d_model, emb_dim),
+        )
+
+    def forward(self, xs: torch.Tensor, x_lens: torch.Tensor) -> torch.Tensor:
+        cls_token = self.cls_token.repeat_interleave(xs.size(0), dim=0)
+
+        xs = torch.cat((cls_token, xs), dim=1)
+        x_lens = x_lens + 1
+
+        masks = length_to_mask(x_lens, xs.size(1), dtype=torch.bool)
+        outs = self.attention(xs, src_key_padding_mask=~masks)
+
+        embeds = self.projector(outs[:, 0, :])
+
+        return embeds
+
+
 class Conformer(nn.Module):
     def __init__(
         self,
@@ -132,7 +170,7 @@ class Conformer(nn.Module):
         encoder_ffn_dim: int,
         encoder_num_layers: int,
         encoder_kernel_size: int,
-        pooling_att_dim: int,
+        pooling_n_heads: int,
         pooling_emb_dim: int,
         dropout: float,
     ):
@@ -156,10 +194,11 @@ class Conformer(nn.Module):
             dropout=dropout,
         )
 
-        self.pooling = AttentiveStatisticsPooling(
+        self.pooling = AttentiveTransformerPooling(
             d_model=d_model,
-            att_dim=pooling_att_dim,
+            n_heads=pooling_n_heads,
             emb_dim=pooling_emb_dim,
+            dropout=dropout,
         )
 
     def forward(
